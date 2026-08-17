@@ -76,9 +76,9 @@ gates:
     evidence: 'Decision utilisateur du 2026-08-17 (« g20 NOT-APPLICABLE ») — meme justification que la VM : aucune
       version anterieure deployee, aucun chemin de mise a niveau a exercer sur cette cible de qualification.'
   g21:
-    verdict: BLOCKED-BILLING-LAG
-    evidence: 'Requete de cout vide : decalage de facturation Azure. Estimation 2 nodes D4as_v5 x ~20 h ~ 8-10 EUR,
-      a confirmer par la donnee reelle.'
+    verdict: PASS
+    evidence: 4,48 € ingérés ≤ enveloppe 8-10 € ; compteur arrêté (g23) ; clos sur décision utilisateur du 17/08,
+      limitation consignée dans G21-COST.yaml.
   g22:
     verdict: PASS
     evidence: Second plan sans derive, exit 0, preuve g02-plan2.log.
@@ -86,10 +86,9 @@ gates:
     verdict: DESTROYED
     evidence: 25/25 + 1 orphelin auto-cree purge ; preuve d'absence complete (voir DESTROY-RESULT-aks.yaml).
 summary:
-  pass: 20
+  pass: 21
   notApplicable:
   - g20
-  blockedBillingLag:
-  - g21
   fail: 0
   destroyed: true
+  finalVerdict: READY-WITH-LIMITS

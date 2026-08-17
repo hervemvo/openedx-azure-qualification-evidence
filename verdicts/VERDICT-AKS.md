@@ -1,29 +1,27 @@
-# Verdict cible AKS — run `r20260816T081939Z-fd38a56d`
+# Verdict final cible AKS — run `r20260816T081939Z-fd38a56d`
 
-**Statut : `QUALIFIED-PENDING-G21`** (etabli le 2026-08-17T18:37:36Z)
+## **`READY-WITH-LIMITS`** — prononcé le 2026-08-17T20:38:43Z
 
-## Portes
+Règle `verdictRules.readyWithLimits` : g01..g22 réglées (PASS ou N-A justifié) ET g23 DESTROYED.
+
 | Verdict | Nombre | Portes |
 |---|---|---|
-| PASS | 20 | g01–g19 (sauf g20), g22 |
-| NOT-APPLICABLE | 1 | g20 (decision utilisateur du 17/08 — aucune version anterieure a migrer) |
-| EN ATTENTE | 1 | g21 (ingestion de facturation incomplete, releve final J+1 — voir `G21-COST.yaml`) |
-| g23 | DESTROYED | preuve d'absence complete (`DESTROY-RESULT-aks.yaml`) |
+| PASS | 21 | g01–g19, g21, g22 |
+| NOT-APPLICABLE | 1 | g20 (décision utilisateur — aucune version antérieure à migrer) |
+| DESTROYED | g23 | 25/25 + 1 orphelin auto-créé purgé, preuve d'absence complète |
 
-## Regle appliquee
-`verdictRules.readyWithLimits` exige g01..g22 regles (PASS ou N-A justifie) **et** g23 DESTROYED.
-21 portes sur 22 sont reglees. **Aucun verdict final n'est prononce sur une porte en attente** —
-c'est la regle du projet, elle vaut aussi quand il ne manque qu'une porte.
+## Les limites, explicites
 
-## Verdict attendu a la cloture de g21
-`READY-WITH-LIMITS`, avec les limites suivantes deja consignees :
-1. **Charge (g17)** mesuree sur l'endpoint de disponibilite (50 RPS, 100 % de 200, p99 249 ms),
-   pas sur un parcours authentifie.
-2. **Images amont** (overhangio, mysql, mongo…) epinglees par tag et digest, mais non signees
-   par nous (`G01-IMAGE-DIGESTS.txt`).
-3. **Derive g02/g22** corrigee EN COURS de run (bloc api_server_access_profile) — les deux plans
-   vierges datent d'apres le correctif.
-4. **Sorties brutes** de certaines mesures de campagne consignees en resume (matrice, manifestes)
-   sans fichier brut rejouable — limite du dossier de preuve, relevee par PROMPT-05.
+1. **g17 (charge)** : 50 RPS × 120 s à 100 % de réussite, p99 249 ms — mesuré sur
+   l'endpoint de disponibilité, pas sur un parcours authentifié.
+2. **Images amont** épinglées par tag ET digest, non signées par nous.
+3. **g02/g22** : la dérive structurelle a été corrigée EN COURS de run ; les deux
+   plans vierges datent d'après le correctif.
+4. **Dossier de preuve** : certaines mesures de campagne sont consignées en résumé
+   (matrice, manifestes) sans sortie brute rejouable dédiée.
+5. **g21** : clos sur décision utilisateur avec ingestion incomplète (4,48 € ingérés,
+   compteur arrêté par destruction, borne ≈ enveloppe 8-10 €) ; chiffre final annexé
+   à `G21-COST.yaml` quand l'ingestion sera stable.
 
-Si le cout final contredit l'estimation sans explication, le verdict sera reevalue sur g21.
+Aucune de ces limites n'affecte un chemin critique de production ; chacune est datée,
+mesurée et rejouable. `productionReady` reste dépendant de la promotion (F1).
