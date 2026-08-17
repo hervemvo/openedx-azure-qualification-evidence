@@ -1,0 +1,78 @@
+# Manifeste A2-AKS v014 - INSTRUMENTS DE QUALIFICATION. MUTATIF (cluster + donnees applicatives).
+# Approuver : AUTHORISER QUALIFICATION-INSTRUMENTS <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+action: QUALIFICATION-INSTRUMENTS
+checkpoint: AKS-3a
+authorizationId: A2-AKS-014-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+purpose: Rendre mesurables les portes fonctionnelles. Elles sont BLOCKED faute d'INSTRUMENT, pas faute
+  de plateforme.
+gatesSettledSoFar:
+  g02-idempotence: FAIL — derive permanente d'un attribut (api_server_access_profile.virtual_network_integration_enabled),
+    survivante a deux applies. Deterministe, non croissante. Arrondir aurait ete contraire a la matrice.
+  g03-identite-secrets-reseau: PASS — API prive, comptes locaux desactives, Azure RBAC, identite de charge,
+    pilote CSI, 0 IP publique, sortie NSG limitee au 443, ACR sans compte admin ni pull anonyme. 9 champs
+    sur 11 resolus ; les 2 absents sont expliques (le cluster prive n'a AUCUN point d'entree public, ce
+    qui est plus fort qu'une liste d'IP ; le second est l'attribut de la derive connue).
+  g04-installation-migrations: PASS — 589 tables, migrations terminees, lms et cms repondent 200 sur /heartbeat.
+whyBlocked:
+  evidence: Le LMS redirige la connexion vers http://apps.lms.qual.local/authn/login.
+  cause: Ces noms ne resolvent pas dans le cluster, et le profil `private` ne prevoit aucun ingress. Caddy
+    tourne mais rien ne route de trafic nomme.
+  affected:
+  - g05 connexion/deconnexion/reinitialisation
+  - g06 acces LMS et Studio
+  - g07 creation et publication de cours
+  - g08 import/export de cours
+  - g09 inscription et progression
+  - g10 certificats
+  - g11 medias public/prive/persistance
+  - g12 recherche et reindexation
+  - g14 i18n, MFE, versions servies
+  ruleApplied: Un controle non execute est BLOCKED, jamais PASS par absence de test. Ces 9 portes ne sont
+    ni PASS ni FAIL a ce stade.
+operations:
+- n: 1
+  op: CLUSTER-DNS-INSTRUMENT
+  scriptSha256: 9b186d2b6998e7fd4facffa3d9454c52e41d2d1027fc44d7b52f18195ba5ac10
+  detail: 'Ajouter une entree `hosts` au ConfigMap coredns-custom : 4 noms -> IP INTERNE du service Caddy
+    (10.0.155.238), puis redemarrer CoreDNS.'
+  whatItIsNot: Ni un ingress, ni une modification de posture. Aucune IP publique, aucune exposition nouvelle.
+    Vu de l'exterieur le cluster reste aussi ferme qu'avant.
+  safety: 'coredns-custom est le point d''extension PREVU par AKS (addonmanager.kubernetes.io/mode: EnsureExists).
+    Verifie VIDE avant ecriture — rien n''est ecrase. La cle ajoutee est nommee gg-qualification.override.'
+  reversibility: Retirer la cle et redemarrer CoreDNS suffit. Aucun effet sur les charges.
+- n: 2
+  op: APP-LEVEL-QUALIFICATION-DATA
+  detail: 'Autoriser la creation de donnees de test applicatives necessaires aux portes g05 a g12 : compte
+    administrateur, compte apprenant, un cours, une inscription, un certificat.'
+  scope: Espace de noms openedx uniquement, base openedx uniquement. Donnees SYNTHETIQUES — aucune donnee
+    personnelle reelle.
+  why: 'Ces portes mesurent des parcours utilisateurs : elles exigent des utilisateurs et un cours. La
+    cible est jetable et sera detruite.'
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+prohibitions:
+- Aucun ingress, aucune IP publique, aucune ouverture de port.
+- Ne pas modifier les autres cles de coredns-custom (il n'y en a aucune aujourd'hui).
+- 'Aucune donnee personnelle reelle : synthetique uniquement.'
+- Aucune suppression de PVC ni de donnee existante.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+honestExpectation: 'Cet instrument debloque la MESURE. Il ne prejuge pas des resultats : plusieurs de
+  ces 9 portes peuvent echouer, et g17 (charge) echouera probablement du fait du sous-dimensionnement
+  consenti pour tenir dans le quota.'
+stillToDecide:
+- 'g19 sauvegarde/restauration : methode a trancher AVANT de mesurer, sinon la mesure ne prouvera rien
+  (le premier passage VM avait produit une fausse mesure de 4 s).'
+- 'g20 mise a niveau sur clone : ecartee en NOT-APPLICABLE justifie sur la VM ; a statuer, non reconduite
+  d''office.'
+costNote: Cluster actif depuis ~15 h 30. A consigner tel quel dans g21, sans lissage.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T13:56:25Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T13:56:25Z'
+  result: in-progress

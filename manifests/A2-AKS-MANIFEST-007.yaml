@@ -1,0 +1,70 @@
+# Manifeste A2-AKS v007 - ADMINISTRABILITE. MUTATIF (1 creation, 1 modification).
+# Approuver : AUTHORISER APPLY <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+supersedes: A2-AKS-MANIFEST-006.yaml (applique, 2 modifiees)
+action: APPLY
+checkpoint: AKS-2c
+authorizationId: A2-AKS-007-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+disposable: true
+purpose: Rendre le cluster administrable. Il ne l'est par personne aujourd'hui.
+confirmedWorking:
+  flux: GitRepository Ready=True, artefact stocke pour main@sha1:17c37214. Le clone SSH sur 443 FONCTIONNE.
+  meaning: Les correctifs D3 (port 443) et D4 (known_hosts) sont valides par le comportement reel, pas
+    par le plan.
+diagnosis:
+  symptom: 'kubectl via ''az aks command invoke'' : Forbidden sur toutes les ressources.'
+  message: User does not have access to the resource in Azure. Update role assignment to allow access.
+  rootCause: Le module desactive les comptes locaux ET active Azure RBAC, sans attribuer aucun role Kubernetes.
+    Le cluster naissait inadministrable — y compris pour l'identite qui le cree.
+  classification: 'SIXIEME DEFAUT PREEXISTANT DU MODULE, et le plus grave sur le plan conception : le
+    durcissement etait complet, la remise de cle absente.'
+fix:
+  module: Variable cluster_admin_object_ids + azurerm_role_assignment.cluster_admin (role 'Azure Kubernetes
+    Service RBAC Cluster Admin', portee = le cluster seul).
+  scope: 'La portee est le cluster, pas l''abonnement : aucun droit ailleurs.'
+  handling: objectId fourni par TF_VAR_, jamais ecrit dans un fichier versionne. Expurge des preuves.
+  adminObjectIdFingerprint: 32bab67fdf1a3ce60a2b4a60105209724b2ef19292c0cba8d715d436d1e943a4
+  note: 'Marquage ''sensitive'' retire : for_each refuse les valeurs sensibles, et un objectId Entra n''est
+    pas un secret. L''expurgation des preuves est conservee par prudence.'
+residualDriftConfirmed:
+  item: api_server_access_profile.virtual_network_integration_enabled
+  finding: LA DERIVE A SURVECU A L'APPLY v006. Elle est permanente, pas transitoire.
+  honesty: J'avais annonce ne pas pouvoir garantir sa disparition. Elle n'a pas disparu. Consignee comme
+    limite de g22 dans le verdict, non masquee.
+  impact: Un plan sur cette cible affichera toujours 1 modification sur place. g22 devra etre juge sur
+    ce fait, pas sur un ideal.
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  allowedRegions:
+  - francecentral
+plan:
+  planFile: targets/aks/tofu/plan7.bin
+  planSha256: 54114e276b0085162e24bc9f504b6c06dac8e59a395ec281d1f5d9ce60d8727b
+  providerLockfileSha256: 5f0a300f5d593da60861131663f7b24ce6ff9f430c103206e39c44870e2ea229
+  allowlistSha256: cc6778d67d3931fdbe09ec1174eb2aa0ccaca2793b241da24190688e912f0478
+  allowlistFile: evidence/r20260816T081939Z-fd38a56d/aks/A2-AKS-ALLOWLIST-007.txt
+  allowlistNote: objectId expurge dans la copie de preuve ; le plan binaire le porte en clair, il reste
+    hors git.
+  expectedCreateCount: 1
+  expectedChangeCount: 1
+  expectedDeletionCount: 0
+  noWildcard: true
+prohibitions:
+- Aucune suppression.
+- Aucun -target/-refresh=false/force-unlock/state rm.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+- Aucune attribution de role hors de la portee du cluster.
+stillUnproven:
+- Montage CSI des secrets depuis Key Vault.
+- Demarrage effectif des pods Open edX (Flux est en cours de controle de sante).
+- Toutes les portes fonctionnelles g04 a g19.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-16T21:31:11Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-16T21:31:11Z'
+  result: applied-1-created-1-changed-0-destroyed

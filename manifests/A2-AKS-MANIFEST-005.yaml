@@ -1,0 +1,70 @@
+# Manifeste A2-AKS v005 - COMPLETION. MUTATIF.
+# Approuver : AUTHORISER APPLY <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+supersedes: A2-AKS-MANIFEST-004.yaml
+action: APPLY
+checkpoint: AKS-2
+authorizationId: A2-AKS-005-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+disposable: true
+remediation:
+  cause: 'Apply v004 refuse : disableLocalAccounts exige l''integration Entra ID depuis Kubernetes 1.25.'
+  defect: 'DEFAUT PREEXISTANT DU MODULE : local_account_disabled=true etait pose sans azure_active_directory_role_based_access_control.
+    Le module etait indeployable tel quel, quel que soit l''environnement.'
+  fix: 'Integration Entra ID activee avec azure_rbac_enabled : l''autorisation Kubernetes suit les roles
+    Azure, plus de kubeconfig administrateur local a faire circuler.'
+  createdSoFar: 16
+  providerNowRegistered: 'Microsoft.KubernetesConfiguration : Registered (cree par l''apply v004)'
+obstacleLedger:
+  note: Six obstacles rencontres sur cette cible. Consignes pour ne pas les reapprendre.
+  mine:
+  - 'Chevauchement de CIDR : 10.50.9.0/24 inclus dans 10.50.0.0/20, arithmetique non verifiee.'
+  - outbound_type=userDefinedRouting sans table de routage ni pare-feu de sortie.
+  - Kubernetes 1.33 retenu sans verifier son plan de support (LTS-only).
+  preExistingProductDefects:
+  - 'ACR en Standard avec public_network_access_enabled=false : Azure ne l''autorise qu''en Premium.'
+  - local_account_disabled sans integration Entra ID.
+  environment:
+  - Microsoft.KubernetesConfiguration non enregistre — SEUL obstacle attrape AVANT depense, par verification
+    prealable.
+  lesson: 'tofu validate et le garde-fou de realisation ne voient aucun de ces refus : ce sont des regles
+    du service Azure, pas de la syntaxe. Seul un appel reel les revele.'
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  allowedRegions:
+  - francecentral
+plan:
+  planFile: targets/aks/tofu/plan5.bin
+  planSha256: 29a6384f96829ed790571bfa86eadb5632f89bd60f9564a3e3bdfda4dbf0e8d6
+  providerLockfileSha256: 5f0a300f5d593da60861131663f7b24ce6ff9f430c103206e39c44870e2ea229
+  allowlistSha256: d975d97c52190c0872fa7ef059faece61020021df3a544a13971eb3c8e622339
+  allowlistFile: evidence/r20260816T081939Z-fd38a56d/aks/A2-AKS-ALLOWLIST-005.txt
+  expectedCreateCount: 6
+  expectedChangeCount: 0
+  expectedDeletionCount: 0
+  noWildcard: true
+securityPosture:
+  localAccounts: desactives
+  authorization: Azure RBAC — l'acces au cluster suit les roles Azure
+  apiServer: prive
+  note: 'Consequence pratique : l''administration passera par ''az aks command invoke'', comme ''az vm
+    run-command'' sur la VM.'
+prohibitions:
+- Aucune ressource hors allowlist.
+- Aucune suppression (expectedDeletionCount = 0).
+- Aucun -target/-refresh=false/force-unlock/state rm.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+unprovenAtThisStage:
+- Flux n'a jamais reconcilie.
+- Le montage CSI des secrets n'a jamais ete execute.
+- La base Tutor n'a jamais demarre sur Kubernetes.
+- Les six obstacles portaient sur la CREATION, jamais sur le FONCTIONNEMENT.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-16T20:33:43Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-16T20:33:43Z'
+  result: applied-6-created-0-changed-0-destroyed

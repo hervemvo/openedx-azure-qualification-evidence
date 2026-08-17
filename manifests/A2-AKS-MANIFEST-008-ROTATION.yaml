@@ -1,0 +1,77 @@
+# Manifeste A2-AKS v008 - ROTATION DE SECRETS. MUTATIF (coffre).
+# Repare une exposition dont je suis l'auteur. CONSOMME.
+# Deux incidents consignes : le second survenu PENDANT la reparation du premier.
+schemaVersion: '1.0'
+action: SECRET-ROTATION
+checkpoint: AKS-2d
+authorizationId: A2-AKS-ROT-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+purpose: Tourner deux secrets que J'AI exposes en clair dans la transcription de session.
+incident:
+  what: Lors d'un grep de diagnostic sur les fichiers rendus par Tutor, j'ai affiche les valeurs en clair
+    au lieu de les masquer.
+  exposed:
+  - openedx-qual-meilisearch-master-key
+  - openedx-qual-mysql-root-password (par correlation d'empreinte affichee)
+  where: 'Transcription de la session uniquement. Verifie : AUCUN fichier de preuve, AUCUN livrable, AUCUN
+    depot ne porte ces valeurs.'
+  cause: Ma commande de verification n'appliquait pas de masque. Faute de methode, pas d'outil.
+  correction: Toutes les lectures de fichiers rendus passent desormais par un masque ; les comparaisons
+    se font par empreinte sha256 tronquee.
+  attribution: MON ERREUR. Ni un defaut du produit, ni une contrainte d'Azure.
+blastRadius:
+  scope: Secrets openedx-qual-* de la cible jetable, portee qualification.
+  notAffected: Production utilisateur, socle rg-socle-* (hors ces deux entrees), cle de deploiement GitOps,
+    connexion SMTP.
+  exploitability: 'Faible : le coffre n''est joignable que par identite autorisee, et MySQL n''a JAMAIS
+    demarre (CreateContainerConfigError sur tous les pods) — aucun volume n''a ete initialise avec l''ancienne
+    valeur.'
+  verified: 'Etat des pods releve avant rotation : mysql et meilisearch en CreateContainerConfigError,
+    7 mysql-job en Error. Aucune donnee a re-chiffrer.'
+operations:
+- op: set
+  secret: openedx-qual-mysql-root-password
+  value: genere aleatoirement a l'execution, 32 octets base64url, jamais affiche
+- op: set
+  secret: openedx-qual-meilisearch-master-key
+  value: genere aleatoirement a l'execution, 32 octets base64url, jamais affiche
+postConditions:
+- 'Les anciennes versions restent dans l''historique du coffre (Azure conserve les versions) : elles doivent
+  etre DESACTIVEES, pas seulement remplacees.'
+- Aucune valeur ne doit apparaitre dans la sortie de commande, ni dans un fichier.
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  keyVault: kv-ggctl-REDACTED
+prohibitions:
+- Ne toucher AUCUN autre secret du coffre.
+- N'afficher aucune valeur, ni ancienne ni nouvelle.
+- Ne pas supprimer les anciennes versions (tracabilite) — les desactiver.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T06:23:31Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T06:23:31Z'
+  result: rotated-2-secrets-3-old-versions-disabled
+secondIncident:
+  what: En diagnostiquant l'echec de la premiere tentative sur meilisearch, j'ai relance la commande SANS
+    '--output none'. Azure a renvoye le secret complet, qui s'est affiche.
+  severity: La valeur exposee etait celle que je venais de poser pour REPARER la premiere exposition.
+  cause: 'Meme faute que la premiere : diagnostic ecrit sans masque. Le correctif que j''avais annonce
+    ne couvrait que les lectures de fichiers, pas les commandes du coffre.'
+  correction: Rotation refaite avec toute sortie redirigee ; le succes se lit au code de retour, jamais
+    au contenu. Verification par empreinte sha256 tronquee, sans lire la valeur.
+  lesson: 'Annoncer une regle ne l''applique pas. La premiere correction etait trop etroite : je l''avais
+    limitee au cas rencontre au lieu de la porter sur toute sortie susceptible de contenir un secret.'
+result:
+  rotated:
+  - openedx-qual-mysql-root-password
+  - openedx-qual-meilisearch-master-key
+  oldVersionsDisabled: 3
+  detail: 'mysql : 1 version desactivee. meilisearch : 2 desactivees (l''originale exposee, plus la valeur
+    intermediaire exposee par le second incident).'
+  verification: Empreintes post-rotation differentes des empreintes pre-rotation pour les deux secrets.
+  residualRisk: 'Aucun : les trois versions compromises sont desactivees, donc illisibles meme avec un
+    acces au coffre.'

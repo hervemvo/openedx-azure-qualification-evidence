@@ -1,0 +1,88 @@
+# Manifeste A2-AKS v011 - CHAINE D'IDENTITE. MUTATIF (Azure + GitHub + cluster).
+# Approuver : AUTHORISER IDENTITY-CHAIN-FIX <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+action: IDENTITY-CHAIN-FIX
+checkpoint: AKS-2g
+authorizationId: A2-AKS-011-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+purpose: Relier la chaine d'identite de charge. Elle est declaree depuis le debut et n'a jamais existe.
+diagnosis:
+  symptom: Aucun Secret projete malgre SecretProviderClass present, pilote CSI 3/3 Running et montage
+    CSI cable.
+  rootCause: Le sujet de l'identifiant federe designe system:serviceaccount:openedx-ggqaks:openedx-runtime.
+    Quatre maillons manquaient.
+  brokenLinks:
+  - 'Espace de noms : attendu openedx-ggqaks, reel openedx (celui de Tutor).'
+  - 'ServiceAccount openedx-runtime : cree par PERSONNE, ni le module ni le depot.'
+  - 'Annotation azure.workload.identity/client-id : absente.'
+  - 'Etiquette azure.workload.identity/use : absente des pods.'
+  classification: 'HUITIEME DEFAUT PREEXISTANT (D8). Meme meta-motif que g14, le plan de donnees et les
+    ConfigMaps : declare, jamais realise.'
+  whyModuleCouldNotBeRight: 'Le module FABRIQUAIT l''espace de noms par convention locale, tandis que
+    le nom reel vient de la kustomization Tutor. Deux sources independantes, jamais rapprochees : aucune
+    valeur du module ne pouvait s''accorder.'
+structuralFix: Le module RECOIT desormais l'espace de noms et le compte de service en entree (variable
+  runtime_namespace). Un sujet federe se deduit de l'execution, il ne se decrete pas. La cible les declare
+  explicitement plutot que d'heriter du defaut.
+operations:
+- n: 1
+  op: TOFU-APPLY
+  detail: Sujet federe recale sur l'execution reelle.
+  planFile: targets/aks/tofu/plan9.bin
+  planSha256: a2b7e3e520026f2a478d7c893309835c23597539fc2477d3be27d66510b0d024
+  providerLockfileSha256: 5f0a300f5d593da60861131663f7b24ce6ff9f430c103206e39c44870e2ea229
+  allowlistSha256: c3cf9801b328b7e826c68a5b37e99cf074a3b373b35fa369314f38fe65d2d78c
+  allowlistFile: evidence/r20260816T081939Z-fd38a56d/aks/A2-AKS-ALLOWLIST-011.txt
+  expectedCreateCount: 0
+  expectedChangeCount: 2
+  expectedDeletionCount: 0
+  changes:
+  - 'azurerm_federated_identity_credential.openedx : subject openedx-ggqaks -> openedx, SUR PLACE'
+  - 'azurerm_kubernetes_cluster.this : derive permanente documentee en v007'
+- n: 2
+  op: GITOPS-PUSH
+  detail: '6 patches portant serviceAccountName: openedx-runtime et l''etiquette d''identite.'
+  treeSha256: e1d1e2db2a4003cf691db88b3919f36e6fd692d594f4ad00e4ea3592c7335ca1
+  buildSha256: 748c084e98a89fe2997011770ad437b965630870da4883b535fd1421018592cf
+- n: 3
+  op: CLUSTER-APPLY-OUT-OF-GITOPS
+  detail: 'Rejouer scripts/apply-secretproviderclass.sh : cree desormais AUSSI le ServiceAccount annote.'
+  scriptSha256: 9426a7ab7cd3bf717e6805f61bd40ec5a36caa50db79a38641443fe485a16fb1
+  why: L'annotation porte le clientID, proscrit du depot par la regle du projet.
+- n: 4
+  op: UNBLOCK-VOLUMES
+  detail: Supprimer les anciens pods bloques qui retiennent les PVC ReadWriteOnce.
+  cause: 'D9 — Multi-Attach error : le deploiement ne peut pas se derouler tant que les anciens pods vivent.'
+  scope: 'Pods de l''espace openedx uniquement. Aucune suppression de PVC, aucune perte de donnees : aucun
+    volume n''a jamais ete initialise.'
+  notAProductDefect: Consequence d'un deploiement reste coince, pas un defaut du module.
+orderMatters: '1 avant 3 : le ServiceAccount ne sert a rien si le sujet federe ne le designe pas. 2 avant
+  4 : les pods recrees doivent porter le compte de service et l''etiquette.'
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  repository: hervemvo/openedx-fleet-config (prive)
+prohibitions:
+- Aucune suppression de PVC ni de PersistentVolume.
+- Aucune suppression hors espace de noms openedx.
+- Aucun -target/-refresh=false/force-unlock/state rm.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+honestExpectation: 'Ce correctif retire le dernier blocage IDENTIFIE. Il ne garantit pas le demarrage
+  : neuf defauts ont ete trouves sur cette cible, et rien ne prouve qu''il n''en reste pas.'
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T10:13:23Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T10:13:23Z'
+  result: executed-4-of-4
+  executionNotes:
+    - 'Op1 : apply 0/2/0. Sujet federe verifie en state = system:serviceaccount:openedx:openedx-runtime.'
+    - 'Op2 : commit 6c25cd3 pousse. Balayage index 7/7 controles REELLEMENT executes (methode Python,
+      aucune valeur passee en argument) — la methode qui avait produit un faux vert est abandonnee.'
+    - 'Op3 : ServiceAccount openedx-runtime cree annote + SecretProviderClass reapplique ; etiquettes
+      de propriete Flux absentes ou retirees, objets hors gestion Flux confirmee.'
+    - 'Op4 : pods de l espace openedx supprimes pour liberer les PVC ReadWriteOnce. 5 PVC intacts
+      apres suppression — aucune donnee perdue, aucun volume n avait ete initialise.'
+

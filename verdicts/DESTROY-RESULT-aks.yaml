@@ -1,0 +1,23 @@
+runId: r20260816T081939Z-fd38a56d
+completedAt: '2026-08-17T17:21:00Z'
+gate: g23
+verdict: DESTROYED
+sequence:
+- 'Passe 1 : 23/25 detruites. ECHEC sur le groupe : solution ContainerInsights creee AUTOMATIQUEMENT par Azure hors
+  etat Tofu ; le fournisseur refuse de supprimer un groupe non vide. Second echec lie : deprovisionnement du fournisseur
+  refuse (409) tant que des ressources existent.'
+- 'Mon faux vert consigne : j''avais ecrit 25/25 sur la foi d''un code de sortie qui refletait le dernier grep,
+  pas tofu (DESTROY_EXIT=1 dans le journal). Le controle d''orphelins a revele l''ecart.'
+- Purge de l'orphelin ContainerInsights (az resource delete, exit 0).
+- 'Passe 2 : 2/2 detruites (groupe + deprovisionnement du fournisseur), exit 0 verifie.'
+orphanAbsenceProof:
+  rgTarget: ResourceGroupNotFound
+  rgManaged: ResourceGroupNotFound
+  resourcesByRunId: 0
+  tofuStateEntries: 0
+  socle: rg-socle-registry et rg-socle-security presents et intacts
+  userProduction: 'VM openedx-geekguru : Succeeded, non touchee'
+  kvRoleAssignments: 2 restantes = id-ggctl-apply / id-ggctl-verify (socle, preexistantes). Celle du cluster (csi_secrets_user)
+    reprise par le destroy.
+lesson: 'Un destroy AKS avec supervision activee laisse une solution ContainerInsights auto-creee hors etat : la
+  purger AVANT le groupe, ou l''adopter dans l''etat. A integrer au module.'

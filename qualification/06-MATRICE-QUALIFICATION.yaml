@@ -1,0 +1,242 @@
+schemaVersion: "1.0"
+matrixVersion: "2026.08.14"
+product: geekguru-openedx-platform
+purpose: qualification Azure VM/AKS/ACA — gates binaires et règles de verdict
+
+# Légende des états de gate : PASS | FAIL | BLOCKED | NOT-APPLICABLE
+# Un contrôle non exécuté est BLOCKED, jamais PASS par absence de test.
+# Verdicts runtime : QUALIFIED-PENDING-DESTROY | READY | READY-WITH-LIMITS |
+#                    NOT-READY | BLOCKED
+# Verdicts destroy : DESTROYED | PENDING-DELETION | PARTIAL | BLOCKED
+
+verdictRules:
+  qualifiedPendingDestroy:
+    when: "gates g01..g22 == PASS (g10 NOT-APPLICABLE seulement si feature désactivée et justifiée)"
+    effect: "productionReady=false, supportStatus=candidate, publication interdite"
+  ready:
+    when: "QUALIFIED-PENDING-DESTROY ET g23 (destroy) == DESTROYED ET promotion approuvée"
+    effect: "productionReady=true après AUTHORISER PROMOTION <manifest-sha256>"
+  readyWithLimits:
+    when: "READY mais limites explicites, acceptables, n'affectant aucun critère obligatoire"
+  notReady:
+    when: "au moins un critère obligatoire == FAIL"
+  blocked:
+    when: "une dépendance, autorisation ou preuve manque"
+  pendingDeletion:
+    when: "g23 : ressources soft-deleted/rétention en attente de purge, datées, budgétées, propriétaire connu"
+    convergesTo: "DESTROYED après purge confirmée à la date de revue ; sinon requalifié PARTIAL"
+  promotionGate: "exige DESTROYED strict ; PENDING-DELETION interdit la promotion"
+
+scope:
+  appliesToRuntimes: [vm, aks, aca]
+  profiles: {vm: small, aks: standard, aca: standard}
+  dataClassification: synthetic-only
+
+gates:
+  - id: g01
+    name: provenance-supply-chain
+    category: supply-chain
+    blockerClass: local-safety
+    method: "vérifier wheel SHA-256, image digests, SBOM source/images, signatures, provenance mono-commit, lockfile"
+    evidence: "release manifest + checksums signés"
+    threshold: "toutes les empreintes correspondent au même commit"
+    appliesTo: [vm, aks, aca]
+  - id: g02
+    name: infrastructure-idempotence
+    category: iac
+    blockerClass: qualification-deployment
+    method: "deuxième tofu plan/apply sans changement ; comparaison d'inventaire"
+    evidence: "plan JSON expurgé #2 à zéro changement"
+    threshold: "0 changement inattendu"
+    appliesTo: [vm, aks, aca]
+  - id: g03
+    name: identity-secrets-network-exposure
+    category: security
+    blockerClass: qualification-deployment
+    method: "vérifier OIDC/managed identity, absence de secret inline, exposition ingress/admin"
+    evidence: "inventaire RBAC + scan secrets + carte réseau"
+    threshold: "aucun secret, admin non public"
+    appliesTo: [vm, aks, aca]
+  - id: g04
+    name: install-migrations
+    category: lifecycle
+    blockerClass: qualification-deployment
+    method: "exécuter init/migrations comme opérations distinctes traçables"
+    evidence: "journal migrations + durées"
+    threshold: "exit 0, idempotent à ré-exécution"
+    appliesTo: [vm, aks, aca]
+  - id: g05
+    name: login-logout-reset-password
+    category: functional
+    blockerClass: cloud-evidence
+    method: "parcours auth avec compte synthétique"
+    evidence: "rapport e2e horodaté"
+    threshold: "login, logout, reset OK"
+    appliesTo: [vm, aks, aca]
+  - id: g06
+    name: lms-studio-access
+    category: functional
+    blockerClass: cloud-evidence
+    method: "accès LMS + Studio"
+    evidence: "rapport e2e"
+    threshold: "HTTP 200 + pages rendues"
+    appliesTo: [vm, aks, aca]
+  - id: g07
+    name: course-authoring-publish
+    category: functional
+    blockerClass: cloud-evidence
+    method: "créer, éditer, publier un cours synthétique"
+    evidence: "rapport e2e + cours visible"
+    threshold: "cours publié et consultable"
+    appliesTo: [vm, aks, aca]
+  - id: g08
+    name: course-import-export
+    category: functional
+    blockerClass: cloud-evidence
+    method: "export puis import d'un cours"
+    evidence: "artefact export + réimport OK"
+    threshold: "round-trip intègre"
+    appliesTo: [vm, aks, aca]
+  - id: g09
+    name: learner-enrollment-progress
+    category: functional
+    blockerClass: cloud-evidence
+    method: "inscrire un apprenant, lire une unité, soumettre une activité"
+    evidence: "rapport e2e + progression enregistrée"
+    threshold: "progression persistée"
+    appliesTo: [vm, aks, aca]
+  - id: g10
+    name: certificates
+    category: functional
+    blockerClass: cloud-evidence
+    method: "générer/consulter un certificat"
+    evidence: "certificat émis"
+    threshold: "OK si activé"
+    appliesTo: [vm, aks, aca]
+    conditional: "seulement si feature certificates activée ; sinon NOT-APPLICABLE justifié"
+  - id: g11
+    name: media-public-private-persistence
+    category: functional
+    blockerClass: cloud-evidence
+    method: "upload/download média public + privé ; redémarrage/remplacement puis re-vérification"
+    evidence: "checksums médias avant/après"
+    threshold: "persistance après remplacement"
+    appliesTo: [vm, aks, aca]
+  - id: g12
+    name: search-reindex
+    category: functional
+    blockerClass: cloud-evidence
+    method: "recherche, détruire l'index, reconstruire (Meilisearch)"
+    evidence: "index reconstruit + résultats corrects"
+    threshold: "recherche fonctionnelle après rebuild"
+    appliesTo: [vm, aks, aca]
+  - id: g13
+    name: workers-queues-scheduled-tasks
+    category: functional
+    blockerClass: cloud-evidence
+    method: "exécuter une tâche Celery + une tâche planifiée"
+    evidence: "logs d'exécution des jobs"
+    threshold: "tâches terminées"
+    appliesTo: [vm, aks, aca]
+  - id: g14
+    name: i18n-mfe-versions-served
+    category: functional
+    blockerClass: cloud-evidence
+    method: "vérifier locales FR/EN et versions MFE réellement servies (marqueurs/digests)"
+    evidence: "réponses HTTP + marqueurs de version"
+    threshold: "digests servis == digests du manifest"
+    appliesTo: [vm, aks, aca]
+  - id: g15
+    name: no-secrets-no-pii-in-logs-evidence
+    category: security
+    blockerClass: cloud-evidence
+    method: "scanner logs et preuves pour secrets/PII"
+    evidence: "rapport de scan négatif"
+    threshold: "0 secret/PII"
+    appliesTo: [vm, aks, aca]
+  - id: g16
+    name: observability-alerts-fired
+    category: operations
+    blockerClass: cloud-evidence
+    method: "déclencher et acquitter les alertes du profil"
+    evidence: "alertes déclenchées + acquittées"
+    threshold: "chaque alerte du profil testée"
+    appliesTo: [vm, aks, aca]
+  - id: g17
+    name: performance-load
+    category: nonfunctional
+    blockerClass: cloud-evidence
+    method: "charge représentative (Q9) avec latence/erreurs/saturation mesurées"
+    evidence: "rapport de charge horodaté"
+    threshold: "seuils contractuels du profil (Q10)"
+    appliesTo: [vm, aks, aca]
+  - id: g18
+    name: failure-recovery-behavior
+    category: nonfunctional
+    blockerClass: cloud-evidence
+    method: "pannes planifiées (pod/nœud/réplique/dépendance) et reprise"
+    evidence: "timeline panne/reprise"
+    threshold: "reprise dans les bornes du profil"
+    appliesTo: [vm, aks, aca]
+  - id: g19
+    name: backup-restore-rpo-rto
+    category: nonfunctional
+    blockerClass: cloud-evidence
+    method: "backup complet + restauration isolée (child target), RPO/RTO mesurés"
+    evidence: "restore drill + durées mesurées"
+    threshold: "RPO/RTO <= cibles du profil"
+    appliesTo: [vm, aks, aca]
+  - id: g20
+    name: upgrade-migration-on-clone
+    category: lifecycle
+    blockerClass: cloud-evidence
+    method: "upgrade Open edX/Tutor sur clone de données représentatif"
+    evidence: "upgrade réussi + parcours post-upgrade"
+    threshold: "données intègres, parcours OK"
+    appliesTo: [vm, aks, aca]
+    conditional: >
+      seulement si une version supérieure à la baseline est publiée ; sinon
+      NOT-APPLICABLE justifié — le contrôle n'a pas d'objet, il n'échoue pas.
+    notApplicable:
+      # Décision utilisateur du 2026-08-16 : ne PAS retirer le gate de la matrice,
+      # mais le neutraliser tant qu'aucune cible d'upgrade n'existe. Le retirer
+      # aurait signifié qu'aucun run futur ne teste jamais les montées de version —
+      # or une production Ulmo/Tutor 21.0.7 reste à migrer.
+      decidedOn: "2026-08-16"
+      decidedBy: medgardherv
+      justification: >
+        Tutor 22.0.1 est la version la plus récente publiée (vérifié sur PyPI) :
+        il n'existe aucune version supérieure vers laquelle monter. Le contrôle est
+        sans objet, ce qui n'est ni un échec du produit ni une lacune de preuve.
+      verifiedFact: "PyPI, 2026-08-16 : dernière version publiée = tutor 22.0.1"
+      # Le gate se REARME automatiquement : il redevient exigible dès qu'une des
+      # deux conditions est remplie.
+      rearmWhen:
+        - "publication d'une version Open edX/Tutor supérieure à la baseline"
+        - "décision de qualifier la migration 21.0.7 (Ulmo) -> 22.0.1 (Verawood)"
+      rearmCheck: "comparer la baseline du contexte à la dernière version publiée avant chaque run"
+  - id: g21
+    name: observed-cost-vs-estimate
+    category: finops
+    blockerClass: cloud-evidence
+    method: "comparer coût observé à l'estimation basse/probable/haute"
+    evidence: "COUTS-OBSERVES.yaml"
+    threshold: "dans la fourchette ou écart expliqué"
+    appliesTo: [vm, aks, aca]
+  - id: g22
+    name: second-plan-apply-no-drift
+    category: iac
+    blockerClass: cloud-evidence
+    method: "plan/apply de fin de qualification sans dérive inattendue"
+    evidence: "plan JSON expurgé final"
+    threshold: "0 dérive inattendue"
+    appliesTo: [vm, aks, aca]
+  - id: g23
+    name: destroy-and-orphan-absence
+    category: lifecycle
+    blockerClass: cloud-evidence
+    method: "tofu plan -destroy approuvé, apply, réconciliation ARG/tags après eventual consistency"
+    evidence: "DESTROY-RESULT-<runtime>.yaml + recherche d'orphelins négative"
+    threshold: "zéro ressource active/facturable non retenue, zéro hors-state inexpliquée"
+    appliesTo: [vm, aks, aca]
+    note: "se ferme après destruction ; QUALIFIED-PENDING-DESTROY précède, READY suit DESTROYED"

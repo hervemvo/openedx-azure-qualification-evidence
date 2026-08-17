@@ -1,0 +1,93 @@
+# Manifeste A2-AKS v016 - CAMPAGNE DE COMPLETION. MUTATIF (coffre + GitHub + cluster + Azure monitor).
+# Approuver : AUTHORISER QUALIFICATION-COMPLETION <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+action: QUALIFICATION-COMPLETION
+checkpoint: AKS-3b
+authorizationId: A2-AKS-016-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+purpose: 'Fermer TOUTES les portes restantes en une seule campagne. Etat courant : 15 PASS, 1 FAIL repare
+  ici (g12), le reste mesure ici.'
+operations:
+- n: 1
+  op: KEYVAULT-REPAIR-MEILI
+  closes: g12
+  defect: 'MA cle API Meilisearch etait un aleatoire independant, or Meili DERIVE les cles de la cle maitre
+    : invalid_api_key, 0 index construit. Defaut de ma conception v009, pas du produit.'
+  steps:
+  - Creer via la cle maitre une cle API reelle (POST /keys, uid fixe, portee indexes '*').
+  - Ecrire sa valeur dans openedx-qual-meilisearch-api-key (jamais affichee, --file/stdin, ancienne version
+    desactivee).
+  - Redemarrer lms/cms/lms-worker/cms-worker (les env de conteneur sont fixes au demarrage).
+  - 'Relancer reindex_studio puis verifier : au moins 1 index, au moins 1 hit sur ''Qualification''.'
+- n: 2
+  op: GITOPS-PUSH
+  closes: g14 (+ complement g10)
+  detail: 'Push des settings re-rendus PILOTES PAR LE CONTRAT (targets/aks/platform.yaml, nouveau). Preuve
+    de causalite EN VIF attendue : ENABLE_DISCUSSION_SERVICE doit basculer False->True apres reconciliation
+    ; CERTIFICATES_HTML_VIEW, PLATFORM_NAME, LANGUAGES deja conformes et re-verifies.'
+  treeSha256: 78005ffde7d68b6e52eb5a3548044c07d655d063639ea03f89d32ccfe6b6a51c
+  buildSha256: 9bd4856528e65ca3bede0b84de1e0ed44ab063b7ccd133f16705703f8798910e
+- n: 3
+  op: ALERTS-APPLY-FIRE-CLEAN
+  closes: g16
+  steps:
+  - Creer un groupe d'action + une alerte metrique CPU noeud (seuil 1%, fenetre 1 min) via az.
+  - Attendre le declenchement REEL (etat fired/alerte activee), consigner l'horodatage.
+  - SUPPRIMER alerte et groupe d'action apres preuve — le plan de destruction v015 reste ainsi exact.
+- n: 4
+  op: LOAD-TEST
+  closes: g17
+  detail: 'fortio/hey depuis un pod : 50 RPS soutenus 120 s sur http://lms.qual.local/ et /login, critere
+    disponibilite >= 99.5% (contrat), p95 consigne.'
+  honestRisk: 'Echec possible et assume : 2 noeuds D4as_v5 volontairement sous-dimensionnes (quota). En
+    cas d''echec le resultat est consigne FAIL et une extension de quota/noeuds serait un manifeste separe.'
+- n: 5
+  op: FAILURE-DRILL
+  closes: g18 + persistance g11
+  steps:
+  - 'Supprimer le pod lms : mesurer le delai jusqu''au retour 200 (dans le cluster, horodatage interne).'
+  - 'Supprimer le pod mongodb : mesurer le retour, puis re-tester l''asset public 200 -> persistance des
+    medias prouvee.'
+  - Aucun PVC touche.
+- n: 6
+  op: BACKUP-RESTORE-DRILL
+  closes: g19
+  method: 'Sauvegardes LOGIQUES : mysqldump --all-databases + mongodump --archive, horodatees (RPO = age
+    du dump). Restauration REELLE dans openedx_restore (MySQL) et un espace mongo separe, verification
+    589 tables / collections, RTO = duree mesuree de la restauration.'
+  whyThisMethod: En mode embedded les donnees vivent dans des volumes du cluster ; la sauvegarde logique
+    est restaurable et verifiable sans snapshot Azure ni nouvel acteur. L'AUTHORISER de ce manifeste vaut
+    approbation de la methode.
+  note: Les dumps restent DANS le cluster (PVC/tmp), jamais exportes ; detruits avec la cible.
+- n: 7
+  op: G13-SUPPLEMENT
+  closes: g13 (renforcement)
+  detail: 'Une tache benigne de bout en bout (send_activation_email) : soumission -> worker -> SMTP, trace
+    complete SUCCESS.'
+userDecisionRequested:
+  gate: g20
+  proposal: 'NOT-APPLICABLE justifie : aucune version anterieure deployee a migrer sur clone (meme raisonnement
+    que la VM, que tu avais approuve). Reponds ''VALIDE g20 NOT-APPLICABLE'' ou demande la mesure.'
+pending:
+  g21: 'Facturation non propagee a cette heure : consigne en attente, cloturable des visibilite (quelques
+    heures). Estimation 6-9 EUR etiquetee estimation, jamais mesure.'
+  g23: 'Destruction en toute fin (manifeste v015 : re-verification du planSha256 avant usage — les alertes
+    etant nettoyees en op.3, il devrait rester exact).'
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  repository: hervemvo/openedx-fleet-config (prive)
+  keyVault: kv-ggctl-REDACTED
+prohibitions:
+- Aucune suppression de PVC ni de donnee (hors bases *_restore de l'exercice).
+- Aucune valeur de secret affichee ni passee en argument.
+- Alertes et groupe d'action supprimes apres preuve.
+- Ne pas toucher au socle rg-socle-* (hors ecriture du secret meili repare) ni a la production utilisateur.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T15:24:56Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T15:24:56Z'
+  result: executed-7-of-7-gates-20-PASS-0-FAIL

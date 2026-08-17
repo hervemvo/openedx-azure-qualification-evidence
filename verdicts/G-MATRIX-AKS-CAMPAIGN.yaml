@@ -1,0 +1,95 @@
+runId: r20260816T081939Z-fd38a56d
+measuredAt: '2026-08-17T16:50:46Z'
+campaign: A2-AKS-016-COMPLETION
+gates:
+  g01:
+    verdict: PASS
+    evidence: '8 images epinglees par tag ET digest sha256 releves sur les conteneurs en execution ; depot GitOps
+      commits d91c88d ; provenance produit E1.6 referencee. Limite : images amont overhangio non signees par nous.'
+  g02:
+    verdict: PASS
+    evidence: Cause racine corrigee (bloc api_server_access_profile rendu dynamique) ; DEUX plans consecutifs vierges,
+      exit 0.
+  g03:
+    verdict: PASS
+    evidence: API prive, comptes locaux off, Azure RBAC, identite de charge, CSI, 0 IP publique, NSG sortie 443
+      seule, ACR sans admin ni pull anonyme.
+  g04:
+    verdict: PASS
+    evidence: Migrations completes (591 tables apres ajout app search) ; lms et cms /heartbeat 200.
+  g05:
+    verdict: PASS
+    evidence: Connexion 200 + session verifiee + deconnexion -> 401 + reinitialisation 200 avec COURRIEL recu par
+      smtp.
+  g06:
+    verdict: PASS
+    evidence: Tableau de bord authentifie 200 (17 Ko) ; LMS, Studio et MFE servis.
+  g07:
+    verdict: PASS
+    evidence: Cours OLX importe et publie, visible dans le modulestore (Qualification Course).
+  g08:
+    verdict: PASS
+    evidence: 'Export du cours : 14 fichiers OLX produits.'
+  g09:
+    verdict: PASS
+    evidence: Inscription active + API enrollment 200 + page de progression 200.
+  g10:
+    verdict: PASS
+    evidence: 'Certificat genere ; rendu web 200 (2827 o, contient le certificat). Methode : enregistrement programmatique
+      + rendu verifie.'
+  g11:
+    verdict: PASS
+    evidence: Public anonyme 200 ; verrouille anonyme 403 ; verrouille inscrit 200 ; PERSISTANCE apres recreation
+      du pod mongodb (200).
+  g12:
+    verdict: PASS
+    evidence: Index tutor_studio_content construit, 1 resultat sur 'Qualification', 4 taches Meili succeeded. A
+      exige une migration ciblee de l'app search, absente du job d'init.
+  g13:
+    verdict: PASS
+    evidence: 'Chaine asynchrone complete : reindex soumis par commande -> execute par cms-worker -> documents dans
+      Meili. lms-worker consomme aussi (tache grades executee).'
+  g14:
+    verdict: PASS
+    evidence: 'CAUSALITE EN VIF : ENABLE_DISCUSSION_SERVICE False->True apres push du contrat ; 4/4 valeurs servies
+      = declarees (platform.yaml -> rendu -> Flux -> settings Django).'
+  g15:
+    verdict: PASS
+    evidence: 0 motif suspect dans les journaux des 12 pods ; balayages d'index git 7/7 et 8/8 reellement executes.
+  g16:
+    verdict: PASS
+    evidence: Alerte metrique creee, declenchee reellement (Fired 15:48:25Z), preuve consignee, alerte supprimee.
+  g17:
+    verdict: PASS
+    evidence: '50 RPS tenus 120 s : 5984 appels, 100,0 % HTTP 200, p50 119 ms, p99 249 ms. Contrat : 99,5 %. Limite
+      : endpoint de disponibilite, pas parcours authentifie.'
+  g18:
+    verdict: PASS
+    evidence: RTO lms 11 s ; RTO mysql 4 s VERIFIE AU NIVEAU BASE (donnees intactes, 3 utilisateurs) ; RTO mongodb
+      4 s. Pods reellement recrees (horodatages).
+  g19:
+    verdict: PASS
+    evidence: 'Sauvegarde logique : dump 3 s (1,3 Mo), restauration 71 s, 591=591 tables, 3=3 utilisateurs ; Mongo
+      5=5 collections. RPO~0, RTO-restauration 71 s.'
+  g20:
+    verdict: NOT-APPLICABLE
+    evidence: 'Decision utilisateur du 2026-08-17 (« g20 NOT-APPLICABLE ») — meme justification que la VM : aucune
+      version anterieure deployee, aucun chemin de mise a niveau a exercer sur cette cible de qualification.'
+  g21:
+    verdict: BLOCKED-BILLING-LAG
+    evidence: 'Requete de cout vide : decalage de facturation Azure. Estimation 2 nodes D4as_v5 x ~20 h ~ 8-10 EUR,
+      a confirmer par la donnee reelle.'
+  g22:
+    verdict: PASS
+    evidence: Second plan sans derive, exit 0, preuve g02-plan2.log.
+  g23:
+    verdict: DESTROYED
+    evidence: 25/25 + 1 orphelin auto-cree purge ; preuve d'absence complete (voir DESTROY-RESULT-aks.yaml).
+summary:
+  pass: 20
+  notApplicable:
+  - g20
+  blockedBillingLag:
+  - g21
+  fail: 0
+  destroyed: true

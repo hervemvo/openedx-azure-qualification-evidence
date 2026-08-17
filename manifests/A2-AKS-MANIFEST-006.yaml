@@ -1,0 +1,77 @@
+# Manifeste A2-AKS v006 - REPARATION FLUX. MUTATIF (2 modifications sur place).
+# Approuver : AUTHORISER APPLY <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+supersedes: A2-AKS-MANIFEST-005.yaml (applique, 6 creees)
+action: APPLY
+checkpoint: AKS-2b
+authorizationId: A2-AKS-006-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+disposable: true
+purpose: Rendre la reconciliation Flux fonctionnelle. L'infrastructure est complete ; elle ne marche pas.
+diagnosis:
+  symptom: 'Flux : provisioningState=Succeeded, complianceState=Non-Compliant.'
+  rootCause: 'FetchFailed / GitOperationFailed : ''dial tcp 140.82.121.3:22: connect: connection timed
+    out''.'
+  why: Le NSG de sortie n'autorise que le 443 (outbound_policy=restricted). Le GitOps du module passe
+    par SSH sur le port 22. Les deux options coexistent dans le module et sont mutuellement incompatibles.
+  classification: TROISIEME DEFAUT PREEXISTANT DU MODULE.
+defectsFixed:
+- id: D3
+  title: Sortie restreinte incompatible avec le GitOps SSH
+  fix: URL basculee sur ssh://git@ssh.github.com:443/... — GitHub expose SSH sur le 443. Aucun port ouvert
+    en plus, aucun secret cree, la posture 'restricted' reste intacte.
+  verified: 'Cle de deploiement testee sur ssh.github.com:443 : authentification acceptee, portee limitee
+    au seul depot.'
+- id: D4
+  title: ssh_known_hosts jamais cable
+  fix: Variable control_repository_known_hosts ajoutee et cablee. Cles d'hote epinglees.
+  verified: Les 3 empreintes (RSA, ECDSA, Ed25519) correspondent aux valeurs publiees par GitHub. Verifiees,
+    non presumees.
+  note: 'Ce contenu est public : il est versionne, contrairement a la cle privee.'
+- id: D5
+  title: 'Derive permanente : upgrade_settings non declare'
+  fix: upgrade_settings declare explicitement (max_surge 10%).
+  impact: Sans ce correctif la porte g22 (absence de derive) echouait a CHAQUE plan, independamment de
+    toute action.
+residualDrift:
+  item: api_server_access_profile.virtual_network_integration_enabled
+  status: 'Declare explicitement, mais absent du state (liste d''IP vide : le bloc s''effondre).'
+  honesty: Je ne peux pas garantir que l'apply le stabilise. Si la derive revient, elle sera consignee
+    comme limite residuelle de g22, pas masquee.
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  allowedRegions:
+  - francecentral
+plan:
+  planFile: targets/aks/tofu/plan6.bin
+  planSha256: 7a03b51b682f98c3f5ce924bc68bc3ac495e11a93452ad1e7e02885cd9b925d3
+  providerLockfileSha256: 5f0a300f5d593da60861131663f7b24ce6ff9f430c103206e39c44870e2ea229
+  allowlistSha256: 25a681083b7bce0d6eadc9670fdf8eb29a658519e82b01efb11fe38c109f2084
+  allowlistFile: evidence/r20260816T081939Z-fd38a56d/aks/A2-AKS-ALLOWLIST-006.txt
+  expectedCreateCount: 0
+  expectedChangeCount: 2
+  expectedDeletionCount: 0
+  noWildcard: true
+openDebt:
+  item: control_repository_auth accepte 'https' et 'none', mais seul 'ssh' produit un artefact.
+  meaning: 'Enumeration inerte : deux valeurs distinctes donnent le meme resultat.'
+  guardGap: Mon garde-fou de realisation teste les champs du CONTRAT, pas les VARIABLES DE MODULE. Il
+    ne pouvait pas voir ce cas.
+  status: NON CORRIGE — consigne comme dette, a traiter apres la qualification.
+prohibitions:
+- Aucune creation, aucune suppression.
+- Aucun -target/-refresh=false/force-unlock/state rm.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+stillUnproven:
+- Reconciliation Flux reelle (l'objet meme de cet apply).
+- Montage CSI des secrets depuis Key Vault.
+- Demarrage de la base Tutor sur Kubernetes.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-16T21:19:40Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-16T21:19:40Z'
+  result: applied-0-created-2-changed-0-destroyed

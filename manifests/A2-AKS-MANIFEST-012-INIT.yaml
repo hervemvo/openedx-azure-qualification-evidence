@@ -1,0 +1,83 @@
+# Manifeste A2-AKS v012 - INITIALISATION OPEN EDX. MUTATIF (coffre + GitHub + cluster + donnees).
+# Approuver : AUTHORISER OPENEDX-INIT <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+action: OPENEDX-INIT
+checkpoint: AKS-2h
+authorizationId: A2-AKS-012-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+purpose: Initialiser Open edX. Les charges tournent, la plateforme n'existe pas encore.
+stateBefore:
+  achieved: Secret CSI projete (chaine identite de charge -> jeton -> Key Vault -> Secret verifiee). 9
+    pods sur 11 en Running.
+  failing: 'lms et cms en Error : « Access denied for user ''openedx'' ».'
+  verified: Dans MySQL, seul root@% existe. Ni base ni compte openedx.
+twoDistinctCauses:
+- id: C1
+  what: L'initialisation n'a jamais tourne.
+  why: Les Jobs rendus par Tutor sont des GABARITS VIDES — ni commande ni variables. Tutor pose la commande
+    a l'execution. Flux deploie les charges mais NE PEUT PAS initialiser la plateforme.
+  classification: PAS un defaut. L'etape figure dans la liste d'operations de l'adaptateur AKS sous le
+    nom `approved-migration-job`. Prevue au plan, jamais lancee.
+  structuralLesson: Sur cette plateforme, le declaratif s'arrete au deploiement. L'initialisation est
+    imperative par conception de Tutor.
+- id: C2
+  what: J'ai confondu deux secrets distincts.
+  why: GG_MYSQL_PASSWORD etait cable sur mysql-root-password, mais ce champ alimente le mot de passe du
+    compte APPLICATIF openedx. root administre le serveur ; openedx est le compte de Django.
+  classification: MON ERREUR de cablage, ni un defaut du produit ni une contrainte d'Azure.
+  fix: Variable renommee GG_MYSQL_OPENEDX_PASSWORD, alimentee par un secret propre. Greffon, 4 patches
+    et SecretProviderClass alignes.
+defectCaughtBeforeExecution:
+  what: Mon script d'initialisation lisait GG_MYSQL_OPENEDX_PASSWORD dans le pod MySQL, qui ne portait
+    que le mot de passe root.
+  consequence: La variable aurait ete vide et le compte applicatif serait ne SANS MOT DE PASSE.
+  howCaught: Verification du contenu reel des variables au build kustomize, avant toute execution.
+  fix: Le patch mysql expose desormais cette variable depuis le Secret projete.
+operations:
+- n: 1
+  op: KEYVAULT-CREATE
+  secrets:
+  - openedx-qual-mysql-openedx-password
+  detail: Valeur generee a l'execution, jamais affichee, jamais passee en argument.
+- n: 2
+  op: GITOPS-PUSH
+  detail: 'Recablage sur le compte applicatif : 4 patches + exposition dans le conteneur MySQL.'
+  treeSha256: 00f5ed04d38f29c3b0aab34d3261715940a903694df18dc6b83b9770934d4fee
+  buildSha256: 00d80c58b7207649d24fd044fdc0f868328f31e6350a8bf46873292dd8108cb7
+- n: 3
+  op: CLUSTER-APPLY-OUT-OF-GITOPS
+  detail: 'Rejouer apply-secretproviderclass.sh : 5 secrets projetes au lieu de 4.'
+  scriptSha256: 6b593b6044330c013259aa1c53d4df4f5612822a9e79744c16d51b52f44cd7f7
+- n: 4
+  op: OPENEDX-INIT
+  detail: 'Executer run-openedx-init.sh : base + compte applicatif, puis migrations lms et cms.'
+  scriptSha256: 362ff527c1a0dd1059de394c465937ba696b9f2aa650e94f69e5af5028d283c5
+  secretHandling: Le mot de passe transite par MYSQL_PWD, jamais par argv. Il ne vient que du Secret projete
+    — il n'entre dans AUCUNE specification Kubernetes, contrairement a ce que produirait `tutor k8s do
+    init`.
+  migrationsJob: 'Job a usage unique, hors GitOps, montant les MEMES ConfigMaps et le MEME Secret que
+    lms/cms : il migre avec la configuration exacte de l''application, pas une variante.'
+orderMatters: 1 avant 3 (le SecretProviderClass referencerait un secret absent). 2 et 3 avant 4 (le pod
+  MySQL doit porter la variable pour creer le compte). Migrations apres creation du compte.
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  repository: hervemvo/openedx-fleet-config (prive)
+  keyVault: kv-ggctl-REDACTED
+prohibitions:
+- Aucune suppression de PVC ni de donnee.
+- Aucune ecriture hors espace de noms openedx et hors les 2 scripts vises.
+- Aucun mot de passe affiche ni passe en argument de commande.
+- Ne pas toucher au socle rg-socle-* ni a la production utilisateur.
+honestExpectation: Apres cette etape, lms et cms devraient demarrer. Ce sera la PREMIERE fois qu'Open
+  edX tourne sur Kubernetes dans ce projet — donc la premiere fois que les portes fonctionnelles g04 a
+  g19 deviennent mesurables. Rien ne garantit qu'aucun autre obstacle n'attend.
+costNote: Le cluster tourne depuis ~13 h. A consigner tel quel dans g21 (cout observe), sans lissage.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T10:34:23Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T10:34:23Z'
+  result: in-progress

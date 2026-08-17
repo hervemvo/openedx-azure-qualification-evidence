@@ -1,0 +1,55 @@
+schemaVersion: "1.0"
+runId: r20260816T081939Z-fd38a56d
+targetId: vm-target-ggqvm
+authorization: "AUTHORISER DESTROY bfaf24c8… (verification 8/8 PASS, manifeste consomme avant execution)"
+executedAt: "2026-08-16T12:19:04Z"
+
+sequenceAmendment:
+  step: 0
+  original: "attendre la fin du job de sauvegarde"
+  amended: "annuler le job residuel"
+  decidedBy: medgardherv
+  rationale: "g19 deja mesure et consigne ; le transfert residuel n'apporte plus de preuve"
+  actualOutcome: "le job s'etait termine de lui-meme — rien a annuler"
+  note: "amendement TRACE dans le manifeste, jamais applique silencieusement"
+
+tofuDestroy:
+  exitCode: 0
+  destroyed: 20
+  expected: 20
+  detail: "16 ressources de la cible + 4 ressources d'alerte (g16)"
+  duration: "3 min 14 s"
+  resourceGroupRemoved: true
+
+outOfStateCleanup:
+  - {resource: rg-ggqvm-restore2, removed: true, duration: "~40 s"}
+  - {resource: "AzureBackup_vm-ggqvm-staging_1196270702002727 (restorePointCollection)", removed: true, note: "orphelin NON TAGGE, inclus au manifeste des le depart — au run precedent il avait ete decouvert apres coup"}
+
+reconciliation:
+  method1_tag: {before: 16, after: 0, expected: 0, verdict: CONFORME}
+  method2_name: {query: "contains(name,'ggqvm')", after: 0, expected: 0, verdict: CONFORME}
+  targetResourceGroupExists: false
+  remainingVaults: [rsv-ggctl-d25e7b13]
+  note: "La recherche par NOM est la methode qui aurait attrape l'orphelin au run precedent ; elle est desormais systematique."
+
+preserved:
+  controlPlane: {resourceGroups: 6, taggedResources: 11, status: intact}
+  userProduction: {vm: openedx-geekguru, status: "JAMAIS touchee"}
+  evidence: "evidence/<run>/** conserve, bundle empreinte ET signe cosign"
+
+softDelete:
+  observedState: AlwaysON
+  retentionDays: 14
+  outcome: "coffre supprime — aucune retention bloquante constatee"
+  note: "Aucune prediction n'avait ete faite cette fois : le run precedent avait montre qu'annoncer PENDING-DELETION etait hasardeux."
+
+verdict: DESTROYED
+verdictRationale: |
+  Seuil g23 : "zero ressource active/facturable non retenue, zero hors-state inexpliquee".
+  - Ressources gerees par tofu : 20/20 detruites, RG supprime.
+  - Ressources hors state : drill ET orphelin non tagge supprimes.
+  - Reconciliation CROISEE (tag + nom) : 0 / 0.
+  - Socle et production utilisateur intacts.
+  Seuil ATTEINT sans reserve : DESTROYED strict.
+
+promotionGate: "DESTROYED strict — condition REMPLIE"

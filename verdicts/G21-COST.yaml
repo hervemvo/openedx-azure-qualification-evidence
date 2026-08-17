@@ -1,0 +1,24 @@
+gate: g21-observed-cost-vs-estimate
+runId: r20260816T081939Z-fd38a56d
+status: INGESTION-INCOMPLETE
+readings:
+- at: '2026-08-17T18:37:36Z'
+  granularity: daily
+  rows:
+  - day: '2026-08-16'
+    eur: 1.87
+  - day: '2026-08-17'
+    eur: 2.61
+    note: partiel — releve le jour meme a 18h36Z, ingestion 8-24h
+  ingestedTotalEur: 4.48
+estimate:
+  eur: 8-10
+  basis: 2 noeuds D4as_v5 x ~21 h + LB + disques
+clusterLifetime:
+  from: 2026-08-16T~20:40Z (apply v002)
+  to: 2026-08-17T~17:50Z (destroy v015)
+finalReadingMethod: 'Rejouer la MEME requete CostManagement (granularite quotidienne, filtre sur les 2 groupes)
+  a partir du 2026-08-18 ; le releve est FINAL quand deux lectures a >6h d''ecart donnent le meme total. Alors :
+  PASS si total <= estimation haute avec ecart explique, sinon FAIL avec analyse.'
+interimAssessment: '4,48 EUR ingeres pour ~14 h facturees sur ~21 h de vie : trajectoire coherente avec l''estimation
+  8-10 EUR. AUCUN verdict prononce sur donnee partielle.'

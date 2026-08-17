@@ -1,0 +1,73 @@
+# Manifeste A2-AKS v015 - DESTRUCTION (cloture passage 1). MUTATIF ET IRREVERSIBLE.
+# Approuver : AUTHORISER DESTROY <sha256-de-ce-fichier>
+schemaVersion: '1.0'
+action: DESTROY
+checkpoint: AKS-5
+authorizationId: A2-AKS-015-r20260816T081939Z-fd38a56d
+runId: r20260816T081939Z-fd38a56d
+targetId: aks-target-ggqaks
+disposable: true
+purpose: Cloture du passage 1 AKS (verdict NOT-READY consigne). Detruire la cible jetable, arreter la
+  facturation, constater g23.
+verdictBeforeDestroy:
+  file: evidence/r20260816T081939Z-fd38a56d/aks/VERDICT-AKS-RUN1.md
+  summary: PASS 2 (g03, g04) · FAIL 2 (g02, g22 — derive structurelle) · BLOCKED 18 · g23 en attente.
+  rationale: 'READY mathematiquement hors d''atteinte pour ce passage : fermer, corriger a froid, requalifier
+    (motif du run VM).'
+plan:
+  planFile: targets/aks/tofu/plan-destroy.bin
+  planSha256: ee20a6d8106f4671203b96fbff90fa7367a311393aff1783e3db909c4e03a29b
+  providerLockfileSha256: 5f0a300f5d593da60861131663f7b24ce6ff9f430c103206e39c44870e2ea229
+  allowlistSha256: 66332473b0bbd87cc401e266185731ae588ebdbda7d1485df61d974775a3e04a
+  allowlistFile: evidence/r20260816T081939Z-fd38a56d/aks/A2-AKS-ALLOWLIST-015-DESTROY.txt
+  expectedCreateCount: 0
+  expectedChangeCount: 0
+  expectedDeleteCount: 25
+  noWildcard: true
+outOfDisposableGroupDeletions:
+  note: Trois destructions sortent du groupe jetable. Chacune est une ressource CREEE PAR CE RUN, pas
+    un element du socle.
+  items:
+  - module.aks.azurerm_role_assignment.csi_secrets_user[0] — attribution sur le coffre du socle, creee
+    par v005. La retirer est exige par g23.
+  - module.aks.azurerm_role_assignment.key_vault_secrets_user[0] — idem.
+  - azurerm_resource_provider_registration.kubernetes_configuration — desinscription du fournisseur Microsoft.KubernetesConfiguration
+    (niveau abonnement).
+  knownRisk: 'La desinscription du fournisseur peut echouer si l''ordre de destruction la tente avant
+    la disparition du cluster (aucune arete de dependance explicite). Remede documente : relancer le destroy
+    — idempotent. La reinscription au prochain run est un pre-flight deja consigne.'
+acceptedResidue:
+  note: 'Residus VOLONTAIREMENT conserves, hors perimetre du destroy :'
+  items:
+  - Secrets openedx-qual-* dans le coffre du socle (crees via CLI, non geres par Tofu ; anciennes versions
+    desactivees). Cout nul ; nettoyage optionnel apres decision.
+  - 'Depot GitHub hervemvo/openedx-fleet-config et sa cle de deploiement lecture seule (flux-reconciler-rotated)
+    : artefacts reutilisables au passage 2.'
+  - Preuves locales evidence/ — c'est leur raison d'etre.
+postDestroy:
+- Balayage d'orphelins par tag run-id sur tout l'abonnement (la reconciliation ne se fie qu'aux tags poses
+  par l'IaC).
+- Consigner DESTROY-RESULT-aks.yaml + duree + toute anomalie.
+- Mettre a jour TODO-EXECUTION.md et la memoire (AKS run 1 clos, dettes passage 2).
+target:
+  subscriptionFingerprint: 5060eeb04de87d6c26d0de4adbf6f96bf0800515b1c5cb03eb4f0dc376c64304
+  tenantFingerprint: 68da0a32cd5ce0a918fc9427839d6190e43fab6f831327caf0c90ea4238ca6d1
+  allowedRegions:
+  - francecentral
+prohibitions:
+- Aucune destruction hors allowlist (25 adresses exactement).
+- Ne toucher NI au coffre lui-meme, NI a aucune autre ressource de rg-socle-*, NI a la production utilisateur.
+- Aucun -target/force-unlock/state rm.
+approval:
+  approvedBy: medgardherv
+  approvedAt: '2026-08-17T16:53:59Z'
+  ttl: PT24H
+  status: used
+  consumedAt: '2026-08-17T16:53:59Z'
+  result: destroyed-25-of-25-completed-plus-1-orphan-purged
+  correction: >-
+    J'avais consigne 25/25 sur la foi du code de sortie : FAUX VERT de mon
+    propre emballage (le code refletait le dernier grep, pas tofu). Le controle
+    d'orphelins a revele la verite : 23/25, groupe non supprime car Azure y
+    avait cree automatiquement une solution ContainerInsights hors etat Tofu.
+    Purge de l'orphelin puis achevement ci-dessous.
